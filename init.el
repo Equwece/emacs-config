@@ -328,7 +328,28 @@
 
 (my-keys-minor-mode 1)
 
+
+(defun read-file-as-string (filepath)
+  "Read the contents of the file at FILEPATH and return it as a string."
+  (with-temp-buffer
+    (insert-file-contents filepath)
+    (buffer-string)))
+
+
+(use-package elfeed
+  :ensure t
+  :config
+
+  (defun load-rss-feeds ()
+    "Read rss feeds from filesystem"
+    (setq rss-feeds-raw (read-file-as-string "feeds.txt"))
+    (mapcar
+     (lambda (line) (string-split line " "))
+     (string-split rss-feeds-raw "\n")))
+
+  (setq elfeed-feeds (load-rss-feeds))
+  (global-set-key (kbd "C-x w") 'elfeed))
+
 (use-package org-roam
   :ensure t)
-
 ;;; init.el ends here
