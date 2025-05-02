@@ -213,7 +213,9 @@
   (setq lsp-keep-workspace-alive nil))
 
 ;; Add metals backend for lsp-mode
-(use-package lsp-metals)
+(use-package lsp-metals
+  :init
+  (setq lsp-metals-multi-root nil))
 
 (use-package lsp-ui)
 
