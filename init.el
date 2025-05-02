@@ -9,18 +9,32 @@
 (setq custom-file "~/.emacs.d/custom.el")
 (load custom-file)
 
-(setq inhibit-startup-message t)
-(scroll-bar-mode -1)
-(tool-bar-mode -1)
-(set-fringe-mode 10)
-(menu-bar-mode -1)
+(setq backup-directory-alist `(("." . "~/.emacs-saves"))) ;; Create backup files in some directory
+
+(setq inhibit-startup-message t) ;; No startup message
+(scroll-bar-mode -1) ;; No scroll bar
+(tool-bar-mode -1) ;; No tool bar
+(set-fringe-mode 10) ;; idk, more space or something
+(menu-bar-mode -1) ;; No menu bar
 (setq ring-bell-function 'ignore) ;; No sound notifications during typing "error"
+(setq-default cursor-type 'bar) ;; Cursor as line
+
+(setq mouse-wheel-progressive-speed nil)
+(pixel-scroll-precision-mode) ;; Pixel-based (smooth) scrolling
+(setq void-text-area-pointer nil) ;; Set pointer style to line-stye in empty areas
+
+(global-visual-line-mode 1)
 
 ;; Make ESC quit prompts
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 
-(set-face-attribute 'default nil :font "Roboto Mono-14:weight=light") ;; Setup main font
+(set-face-attribute 'default nil :font "Jetbrains Mono-14") ;; Setup main font
 
+;; Specify emacs backup directory
+(setq backup-directory-alist '(("." . "~/emacs-backups")))
+
+;; Do not modify last line
+(setq mode-require-final-newline nil)
 
 ;; Init package manager
 (require 'package)
@@ -48,43 +62,84 @@
 
 (require 'quelpa)
 
-;; Install evil-mode
-(use-package evil
+;; Install vertico/consult
+(use-package vertico
+             :ensure t
+             :bind (:map minibuffer-local-map
+                         ("C-j" . vertico-next)
+                         ("C-k" . vertico-previous))
+             :init (vertico-mode))
+
+;; Persist history over Emacs restarts. Vertico sorts by history position
+(use-package savehist
+             :init
+             (savehist-mode))
+
+;; Use `orderless` completion style.
+(use-package orderless
+             :custom
+             (completion-styles '(orderless basic))
+             (completion-category-defaults nil)
+             (completion-category-overrides '((file (styles partial-completion)))))
+
+;; Example configuration for Consult
+(use-package consult
+  :after consult-project-extra
+  :bind (("C-x c f" . consult-fd)
+	 ("C-x c g" . consult-ripgrep)
+	 ("C-x c b" . consult-buffer)
+	 ("C-x c p" . consult-project-extra-find))
+
+  ;; TODO: Setup bindings
+
+  ;; Enable automatic preview at point in the *Completions* buffer. This is
+  ;; relevant when you use the default completion UI.
+  :hook (completion-list-mode . consult-preview-at-point-mode)
+
+  ;; The :init configuration is always executed (Not lazy)
   :init
-  (setq evil-want-C-i-jump nil) ;; org-mode tab cycle support
-  (setq evil-want-C-u-scroll t)
+
+  ;; Tweak the register preview for `consult-register-load',
+  ;; `consult-register-store' and the built-in commands.  This improves the
+  ;; register formatting, adds thin separator lines, register sorting and hides
+  ;; the window mode line.
+  (advice-add #'register-preview :override #'consult-register-window)
+  (setq register-preview-delay 0.5)
+
+  ;; Use Consult to select xref locations with preview
+  (setq xref-show-xrefs-function #'consult-xref
+        xref-show-definitions-function #'consult-xref)
+
+  ;; Configure other variables and modes in the :config section,
+  ;; after lazily loading the package.
   :config
-  (evil-mode 1)
-  (evil-set-undo-system 'undo-redo))
 
+  ;; Optionally configure preview. The default value
+  ;; is 'any, such that any key triggers the preview.
+  ;; (setq consult-preview-key 'any)
+  ;; (setq consult-preview-key "M-.")
+  ;; (setq consult-preview-key '("S-<down>" "S-<up>"))
+  ;; For some commands and buffer sources it is useful to configure the
+  ;; :preview-key on a per-command basis using the `consult-customize' macro.
+  (consult-customize
+   consult-theme :preview-key '(:debounce 0.2 any)
+   consult-ripgrep consult-git-grep consult-grep consult-man
+   consult-bookmark consult-recent-file consult-xref
+   consult--source-bookmark consult--source-file-register
+   consult--source-recent-file consult--source-project-recent-file
+   ;; :preview-key "M-."
+   :preview-key '(:debounce 0.4 any))
 
-(with-eval-after-load 'evil
-  (define-key evil-motion-state-map (kbd "C-f") nil)
-  (define-key evil-motion-state-map (kbd "K") nil)
-  (define-key evil-motion-state-map (kbd "SPC") nil)
-  (define-key evil-motion-state-map (kbd "g c") 'comment-or-uncomment-region)
-  (define-key global-map (kbd "C-f") nil))
+  ;; Optionally configure the narrowing key.
+  ;; Both < and C-+ work reasonably well.
+  (setq consult-narrow-key "<") ;; "C-+"
 
+  (setq consult-fd-args "fd --full-path --color=never -H -E \".git\"")
 
-;; Install ivy completion framework
-(use-package swiper)
-(use-package counsel)
-(use-package ivy
-  :ensure t
-  :bind (("C-s" . swiper)
-         :map ivy-minibuffer-map
-         ("TAB" . ivy-alt-done)
-         ("C-l" . ivy-alt-done)
-         ("C-j" . ivy-next-line)
-         ("C-k" . ivy-previous-line)
-         :map ivy-switch-buffer-map
-         ("C-k" . ivy-previous-line)
-         ("C-l" . ivy-done)
-         ("C-d" . ivy-switch-buffer-kill)
-         :map ivy-reverse-i-search-map
-         ("C-k" . ivy-previous-line)
-         ("C-d" . ivy-reverse-i-search-kill))
-  :config (ivy-mode 1))
+  ;; Optionally make narrowing help available in the minibuffer.
+  ;; You may want to use `embark-prefix-help-command' or which-key instead.
+  ;; (keymap-set consult-narrow-map (concat consult-narrow-key " ?") #'consult-narrow-help)
+)
 
 
 (defun local/org-mode-setup ()
@@ -108,20 +163,6 @@
   :hook (org-mode . org-bullets-mode)
   :custom
   (org-bullets-bullet-list '("◉" "○" "●" "○" "●" "○" "●")))
-
-;; Setup nano theme
-;; (quelpa
-;; '(nano-theme
-;;   :fetcher github
-;;   :repo "rougier/nano-theme"))
-;; (require 'nano-theme)
-;; (load-theme 'nano-light t)
-
-;; Setup Stimmung theme
-(use-package stimmung-themes
-  :demand t
-  :ensure t
-  :config (stimmung-themes-load-light))
 
 ;; Fix "Package spinner 1.7.3 is unavailable" error
 (use-package gnu-elpa-keyring-update)
@@ -211,11 +252,11 @@
   (find-file "~/.emacs.d/init.el")
   (message "Opened:  %s" (buffer-name))))
 
-;; Set move bindings for flycheck lsp error messages
-;; (with-eval-after-load 'flycheck
-;;   (with-eval-after-load 'evil
-;;     (define-key flycheck-mode-map (kbd "]d") 'flycheck-next-error)
-;;     (define-key flycheck-mode-map (kbd "[d") 'flycheck-previous-error)))
+;; Ctrl-HJKL instead of default Emacs movement bindingsh
+(global-set-key (kbd "C-j") 'next-line)
+(global-set-key (kbd "C-k") 'previous-line)
+(global-set-key (kbd "C-l") 'forward-char)
+(global-set-key (kbd "C-h") 'backward-char)
 
 ;; Install geiser, Scheme runtime/compiler/etc implementation by MIT
 (use-package geiser-mit
@@ -239,5 +280,55 @@
   :config
   ;; load default config
   (require 'smartparens-config))
+
+(use-package nix-mode)
+
+(use-package lua-mode)
+
+;; Plugin for better consult project navigation
+;; Allows to use narrow function (hit `consult-narrow-key` and type b/p/f)
+(use-package consult-project-extra
+  :ensure t)
+
+;; Needed for `:after char-fold' to work in reverse-im setup
+(use-package char-fold
+  :custom
+  (char-fold-symmetric t)
+  (search-default-mode #'char-fold-to-regexp))
+
+;; Plugin for using hotkeys with different keyboard languages
+(use-package reverse-im
+  :ensure t ; install `reverse-im' using package.el
+  :demand t ; always load it
+  :after char-fold ; but only after `char-fold' is loaded
+  :bind
+  ("M-T" . reverse-im-translate-word) ; fix a word in wrong layout
+  :custom
+  ;; cache generated keymaps
+  (reverse-im-cache-file (locate-user-emacs-file "reverse-im-cache.el"))
+  ;; use lax matching
+  (reverse-im-char-fold t)
+  (reverse-im-read-char-advice-function #'reverse-im-read-char-include)
+  :config
+  (reverse-im-mode t)) ; turn the mode on
+
+(defvar my-keys-minor-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-j") 'next-line)
+    (define-key map (kbd "C-k") 'previous-line)
+    (define-key map (kbd "C-l") 'forward-char)
+    (define-key map (kbd "C-h") 'backward-char)
+    map)
+  "my-keys-minor-mode keymap.")
+
+(define-minor-mode my-keys-minor-mode
+  "A minor mode so that my key settings override annoying major modes."
+  :init-value t
+  :lighter " my-keys")
+
+(my-keys-minor-mode 1)
+
+(use-package org-roam
+  :ensure t)
 
 ;;; init.el ends here
