@@ -85,10 +85,10 @@
 ;; Example configuration for Consult
 (use-package consult
   :after consult-project-extra
-  :bind (("C-x c f" . consult-fd)
-	 ("C-x c g" . consult-ripgrep)
-	 ("C-x c b" . consult-buffer)
-	 ("C-x c p" . consult-project-extra-find))
+  :bind (("M-p c f" . consult-fd)
+	 ("M-p c g" . consult-ripgrep)
+	 ("M-p c b" . consult-buffer)
+	 ("M-p c p" . consult-project-extra-find))
 
   ;; TODO: Setup bindings
 
@@ -254,12 +254,6 @@
   (find-file "~/.emacs.d/init.el")
   (message "Opened:  %s" (buffer-name))))
 
-;; Ctrl-HJKL instead of default Emacs movement bindingsh
-(global-set-key (kbd "C-j") 'next-line)
-(global-set-key (kbd "C-k") 'previous-line)
-(global-set-key (kbd "C-l") 'forward-char)
-(global-set-key (kbd "C-h") 'backward-char)
-
 ;; Install geiser, Scheme runtime/compiler/etc implementation by MIT
 (use-package geiser-mit
   :ensure t
@@ -344,7 +338,7 @@
 
   (defun load-rss-feeds ()
     "Read rss feeds from filesystem"
-    (setq rss-feeds-raw (read-file-as-string "feeds.txt"))
+    (setq rss-feeds-raw (read-file-as-string "~/feeds.txt"))
     (mapcar
      (lambda (line) (string-split line " "))
      (string-split rss-feeds-raw "\n")))
@@ -353,5 +347,30 @@
   (global-set-key (kbd "C-x w") 'elfeed))
 
 (use-package org-roam
-  :ensure t)
+  :ensure t
+  :init
+  (setq org-roam-v2-ack t)
+  :custom
+  (org-roam-directory "~/Documents/org/roam-notes")
+  :bind (("M-p n l" . org-roam-buffer-toggle)
+	 ("M-p n f" . org-roam-node-find)
+	 ("M-p n i" . org-roam-node-insert))
+  :config
+  (org-roam-setup))
+
+(defun goto-daily ()
+  "Open or create daily file"
+  (interactive)
+  (setq current-timestamp (format-time-string "%Y-%m-%d"))
+  (setq daily-file
+	(concat "~/Documents/org/daily/" current-timestamp "-daily-log.org"))
+  (if (file-exists-p daily-file)
+      (find-file daily-file)
+    (progn
+      (with-temp-file daily-file
+	(insert "* " current-timestamp))
+      (find-file daily-file))))
+
+(global-set-key (kbd "M-p d") 'goto-daily)
+
 ;;; init.el ends here
